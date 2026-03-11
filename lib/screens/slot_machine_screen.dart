@@ -39,6 +39,12 @@ class _SlotMachineScreenState extends State<SlotMachineScreen>
   Color _feedbackColor = Colors.white;
   String _playerName = 'Player';
 
+  // Timer state
+  int _timeLeft = 60;
+  Timer? _gameTimer;
+  bool _isGameOver = false;
+  bool _timerStarted = false;
+
   late AnimationController _headAnim, _torsoAnim, _legsAnim;
   late AnimationController _leverController;
   late Animation<double> _leverAnimation;
@@ -108,11 +114,38 @@ class _SlotMachineScreenState extends State<SlotMachineScreen>
     _headCtrl.dispose();
     _torsoCtrl.dispose();
     _legsCtrl.dispose();
+    _gameTimer?.cancel();
     super.dispose();
   }
 
+  void _startTimer() {
+    if (_timerStarted) return;
+    _timerStarted = true;
+    _gameTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      setState(() {
+        if (_timeLeft > 0) {
+          _timeLeft--;
+        } else {
+          _isGameOver = true;
+          timer.cancel();
+          _endGame();
+        }
+      });
+    });
+  }
+
   void _spin() {
-    if (_isSpinning) return;
+    if (_isSpinning || _isGameOver) return;
+    
+    // Start timer on first spin
+    if (!_timerStarted) {
+      _startTimer();
+    }
+
     setState(() {
       _isSpinning = true;
       _showResults = false;
@@ -157,8 +190,11 @@ class _SlotMachineScreenState extends State<SlotMachineScreen>
     });
   }
 
-  bool _match(String g, String c) =>
-      g.trim().toLowerCase() == c.trim().toLowerCase();
+  bool _match(String g, String c) {
+    final cleanG = g.trim().replaceAll(' ', '').toLowerCase();
+    final cleanC = c.trim().replaceAll(' ', '').toLowerCase();
+    return cleanG == cleanC;
+  }
 
   void _submitGuesses() {
     int correct = 0;
@@ -186,14 +222,15 @@ class _SlotMachineScreenState extends State<SlotMachineScreen>
   }
 
   void _endGame() {
-    globalScores.add({
+    final newScore = {
       'name': _playerName,
       'score': _score,
       'date': DateTime.now().toString().substring(0, 16),
-    });
+    };
+    globalScores.add(newScore);
     globalScores
         .sort((a, b) => (b['score'] as int).compareTo(a['score'] as int));
-    saveScores();
+    saveScores(newScore);
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -226,6 +263,9 @@ class _SlotMachineScreenState extends State<SlotMachineScreen>
                 _score = 0;
                 _feedback = '';
                 _showResults = false;
+                _timeLeft = 60;
+                _isGameOver = false;
+                _timerStarted = false;
               });
             },
             child: const Text('Play Again',
@@ -243,6 +283,12 @@ class _SlotMachineScreenState extends State<SlotMachineScreen>
         ],
       ),
     );
+  }
+
+  String _formatTime(int seconds) {
+    final mins = (seconds ~/ 60).toString().padLeft(2, '0');
+    final secs = (seconds % 60).toString().padLeft(2, '0');
+    return '$mins:$secs';
   }
 
   @override
@@ -291,29 +337,45 @@ class _SlotMachineScreenState extends State<SlotMachineScreen>
                                 ),
                               ),
                               Expanded(
-                                child: Text(_playerName,
-                                    textAlign: TextAlign.center,
-                                    style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w700,
-                                        letterSpacing: 1)),
+                                child: Column(
+                                  children: [
+                                    Text(_playerName,
+                                        textAlign: TextAlign.center,
+                                        style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w700,
+                                            letterSpacing: 1)),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      _formatTime(_timeLeft),
+                                      style: TextStyle(
+                                        color: _timeLeft < 10
+                                            ? Colors.redAccent
+                                            : Colors.greenAccent,
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w900,
+                                        fontFamily: 'Courier',
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                               GestureDetector(
                                 onTap: _endGame,
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(
-                                      horizontal: 12, vertical: 6),
+                                      horizontal: 10, vertical: 5),
                                   decoration: BoxDecoration(
-                                    color: Colors.white.withValues(alpha: 0.08),
-                                    borderRadius: BorderRadius.circular(10),
+                                    color: Colors.redAccent.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: Colors.redAccent.withValues(alpha: 0.3)),
                                   ),
-                                  child: Text('END',
+                                  child: const Text('END',
                                       style: TextStyle(
-                                          color: Colors.white
-                                              .withValues(alpha: 0.6),
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w700)),
+                                          color: Colors.redAccent,
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w900)),
                                 ),
                               ),
                             ],
@@ -481,7 +543,7 @@ class _SlotMachineScreenState extends State<SlotMachineScreen>
 
   Widget _buildLever(double totalH) {
     return GestureDetector(
-      onTap: _isSpinning ? null : _spin,
+      onTap: (_isSpinning || _isGameOver) ? null : _spin,
       child: AnimatedBuilder(
         animation: _leverAnimation,
         builder: (_, _) {
@@ -599,18 +661,18 @@ class _SlotMachineScreenState extends State<SlotMachineScreen>
           _field('Legs', _legsCtrl),
           const SizedBox(height: 8),
           GestureDetector(
-            onTap: _submitGuesses,
+            onTap: (_isSpinning || _isGameOver) ? null : _submitGuesses,
             child: Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 12),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: (_isSpinning || _isGameOver) ? Colors.white24 : Colors.white,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Text('SUBMIT',
+              child: Text('SUBMIT',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                      color: Colors.black,
+                      color: (_isSpinning || _isGameOver) ? Colors.white38 : Colors.black,
                       fontSize: 14,
                       fontWeight: FontWeight.w800,
                       letterSpacing: 2)),
@@ -626,6 +688,7 @@ class _SlotMachineScreenState extends State<SlotMachineScreen>
       height: 42,
       child: TextField(
         controller: ctrl,
+        enabled: !_isGameOver,
         style: const TextStyle(color: Colors.white, fontSize: 14),
         textCapitalization: TextCapitalization.words,
         decoration: InputDecoration(

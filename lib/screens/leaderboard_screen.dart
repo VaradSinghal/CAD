@@ -1,25 +1,40 @@
-import 'dart:convert';
+import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 /// Global in-memory scores list
 final List<Map<String, dynamic>> globalScores = [];
 
-/// Load scores from disk
+/// Load scores from global Firestore
 Future<void> loadScores() async {
-  final prefs = await SharedPreferences.getInstance();
-  final data = prefs.getString('leaderboard');
-  if (data != null) {
-    final list = jsonDecode(data) as List;
+  try {
+    final snapshot = await FirebaseFirestore.instance
+        .collection('leaderboard')
+        .orderBy('score', descending: true)
+        .limit(20)
+        .get();
+
     globalScores.clear();
-    globalScores.addAll(list.cast<Map<String, dynamic>>());
+    for (var doc in snapshot.docs) {
+      globalScores.add(doc.data());
+    }
+  } catch (e) {
+    debugPrint('Failed to load Firestore scores: $e');
   }
 }
 
-/// Save scores to disk
-Future<void> saveScores() async {
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setString('leaderboard', jsonEncode(globalScores));
+/// Save scores to global Firestore
+Future<void> saveScores(Map<String, dynamic> scoreData) async {
+  try {
+    await FirebaseFirestore.instance.collection('leaderboard').add({
+      'name': scoreData['name'],
+      'score': scoreData['score'],
+      'date': scoreData['date'],
+      'timestamp': FieldValue.serverTimestamp(),
+    });
+  } catch (e) {
+    debugPrint('Failed to save Firestore score: $e');
+  }
 }
 
 class LeaderboardScreen extends StatefulWidget {
@@ -29,18 +44,33 @@ class LeaderboardScreen extends StatefulWidget {
   State<LeaderboardScreen> createState() => _LeaderboardScreenState();
 }
 
-class _LeaderboardScreenState extends State<LeaderboardScreen> {
+class _LeaderboardScreenState extends State<LeaderboardScreen>
+    with SingleTickerProviderStateMixin {
   bool _loading = true;
+  late AnimationController _animationController;
 
   @override
   void initState() {
     super.initState();
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    );
     _load();
   }
 
   Future<void> _load() async {
     await loadScores();
-    if (mounted) setState(() => _loading = false);
+    if (mounted) {
+      setState(() => _loading = false);
+      _animationController.forward();
+    }
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
   }
 
   @override
@@ -48,6 +78,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
     final scores = globalScores;
 
     return Scaffold(
+      backgroundColor: Colors.transparent,
       body: Container(
         width: double.infinity,
         height: double.infinity,
@@ -61,139 +92,20 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
         child: SafeArea(
           child: Column(
             children: [
-              // Top bar
-              Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                child: Row(
-                  children: [
-                    GestureDetector(
-                      onTap: () => Navigator.pop(context),
-                      child: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Colors.black38,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Icon(Icons.arrow_back_ios_new,
-                            color: Colors.white, size: 20),
-                      ),
-                    ),
-                    const Expanded(
-                      child: Text(
-                        'LEADERBOARD',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 22,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 3,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 36),
-                  ],
-                ),
-              ),
+              // Premium App Bar
+              _buildAppBar(context),
 
-              // Trophy header
-              Container(
-                margin:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      Colors.white.withValues(alpha: 0.06),
-                      Colors.white.withValues(alpha: 0.03),
-                    ],
-                  ),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.15)),
-                ),
-                child: Column(
-                  children: [
-                    const Text('🎰', style: TextStyle(fontSize: 48)),
-                    const SizedBox(height: 8),
-                    Text(
-                      _loading
-                          ? 'Loading...'
-                          : scores.isEmpty
-                              ? 'No games played yet!'
-                              : 'Best: ${scores.first['name']} — ${scores.first['score']} pts',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    Text(
-                      scores.isEmpty
-                          ? 'Play to earn your spot!'
-                          : '${scores.length} game${scores.length == 1 ? '' : 's'} played',
-                      style:
-                          const TextStyle(color: Colors.white54, fontSize: 14),
-                    ),
-                  ],
-                ),
-              ),
-
-              // Scores list
               Expanded(
                 child: _loading
                     ? const Center(
-                        child: CircularProgressIndicator(color: Colors.white))
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
                     : scores.isEmpty
-                        ? Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(Icons.emoji_events_outlined,
-                                    size: 80,
-                                    color:
-                                        Colors.white.withValues(alpha: 0.15)),
-                                const SizedBox(height: 16),
-                                const Text(
-                                    'Play a game to see your scores here!',
-                                    style: TextStyle(
-                                        color: Colors.white38, fontSize: 16)),
-                                const SizedBox(height: 24),
-                                GestureDetector(
-                                  onTap: () => Navigator.pushReplacementNamed(
-                                      context, '/slot'),
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 32, vertical: 14),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white,
-                                      borderRadius: BorderRadius.circular(25),
-                                    ),
-                                    child: const Text('START PLAYING',
-                                        style: TextStyle(
-                                            color: Colors.black,
-                                            fontWeight: FontWeight.w800,
-                                            fontSize: 14,
-                                            letterSpacing: 3)),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          )
-                        : ListView.builder(
-                            padding:
-                                const EdgeInsets.symmetric(horizontal: 20),
-                            itemCount: scores.length,
-                            itemBuilder: (context, index) {
-                              final entry = scores[index];
-                              return _buildScoreCard(
-                                rank: index + 1,
-                                name: (entry['name'] as String?) ?? 'Player',
-                                score: entry['score'] as int,
-                                date: (entry['date'] as String?) ?? '',
-                              );
-                            },
-                          ),
+                        ? _buildEmptyState(context)
+                        : _buildLeaderboardContent(scores),
               ),
             ],
           ),
@@ -202,93 +114,388 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
     );
   }
 
-  Widget _buildScoreCard({
+  Widget _buildAppBar(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+      child: Row(
+        children: [
+          GestureDetector(
+            onTap: () => Navigator.pop(context),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                child: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.2),
+                    ),
+                  ),
+                  child: const Icon(Icons.arrow_back_ios_new,
+                      color: Colors.white, size: 20),
+                ),
+              ),
+            ),
+          ),
+          const Expanded(
+            child: Text(
+              'LEADERBOARD',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 24,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 4,
+              ),
+            ),
+          ),
+          const SizedBox(width: 44),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.emoji_events_outlined,
+              size: 100, color: Colors.white.withValues(alpha: 0.1)),
+          const SizedBox(height: 24),
+          const Text(
+            'NO CHAMPIONS YET',
+            style: TextStyle(
+              color: Colors.white54,
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 2,
+            ),
+          ),
+          const SizedBox(height: 32),
+          GestureDetector(
+            onTap: () => Navigator.pushReplacementNamed(context, '/slot'),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(30),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.white.withValues(alpha: 0.2),
+                    blurRadius: 20,
+                    spreadRadius: 2,
+                  ),
+                ],
+              ),
+              child: const Text(
+                'START PLAYING',
+                style: TextStyle(
+                  color: Colors.black,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 14,
+                  letterSpacing: 2,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLeaderboardContent(List<Map<String, dynamic>> scores) {
+    final podiumScores = scores.take(3).toList();
+    final remainingScores = scores.skip(3).toList();
+
+    return ListView(
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      children: [
+        // Podium Section
+        if (podiumScores.isNotEmpty) ...[
+          _buildPodium(podiumScores),
+          const SizedBox(height: 30),
+        ],
+
+        // List Header
+        if (remainingScores.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(left: 10, bottom: 15),
+            child: Text(
+              'WORLD RANKINGS',
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.4),
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 3,
+              ),
+            ),
+          ),
+
+        // List Section
+        ...remainingScores.asMap().entries.map((entry) {
+          final index = entry.key;
+          final scoreData = entry.value;
+          return _buildAnimatedScoreTile(
+            rank: index + 4,
+            name: scoreData['name'] ?? 'Player',
+            score: scoreData['score'] ?? 0,
+            delay: (index + 4) * 0.1,
+          );
+        }),
+      ],
+    );
+  }
+
+  Widget _buildPodium(List<Map<String, dynamic>> podium) {
+    return Container(
+      height: 240,
+      margin: const EdgeInsets.symmetric(horizontal: 10),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          // 2nd Place
+          if (podium.length > 1)
+            _buildPodiumSpot(
+              podium[1],
+              2,
+              160,
+              const Color(0xFFC0C0C0), // Silver
+              0.2,
+            ),
+          const SizedBox(width: 15),
+          // 1st Place
+          if (podium.isNotEmpty)
+            _buildPodiumSpot(
+              podium[0],
+              1,
+              200,
+              const Color(0xFFFFD700), // Gold
+              0.0,
+            ),
+          const SizedBox(width: 15),
+          // 3rd Place
+          if (podium.length > 2)
+            _buildPodiumSpot(
+              podium[2],
+              3,
+              140,
+              const Color(0xFFCD7F32), // Bronze
+              0.4,
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPodiumSpot(Map<String, dynamic> data, int rank, double height,
+      Color color, double delay) {
+    return Expanded(
+      child: FadeTransition(
+        opacity: CurvedAnimation(
+          parent: _animationController,
+          curve: Interval(delay, delay + 0.4, curve: Curves.easeOut),
+        ),
+        child: SlideTransition(
+          position: Tween<Offset>(
+            begin: const Offset(0, 0.2),
+            end: Offset.zero,
+          ).animate(CurvedAnimation(
+            parent: _animationController,
+            curve: Interval(delay, delay + 0.4, curve: Curves.easeOut),
+          )),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              // Avatar/Icon
+              Container(
+                width: rank == 1 ? 70 : 60,
+                height: rank == 1 ? 70 : 60,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.black,
+                  border: Border.all(color: color, width: 3),
+                  boxShadow: [
+                    BoxShadow(
+                      color: color.withValues(alpha: 0.3),
+                      blurRadius: 15,
+                      spreadRadius: 2,
+                    ),
+                  ],
+                ),
+                child: Center(
+                  child: Text(
+                    rank == 1 ? '👑' : (rank == 2 ? '🥈' : '🥉'),
+                    style: TextStyle(fontSize: rank == 1 ? 32 : 28),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              // Name
+              Text(
+                data['name'] ?? 'Player',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w900,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(height: 4),
+              // Score
+              Text(
+                '${data['score']} PTS',
+                style: TextStyle(
+                  color: color,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 15),
+              // Podium Base
+              Container(
+                height: height - 100,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      color.withValues(alpha: 0.4),
+                      color.withValues(alpha: 0.1),
+                    ],
+                  ),
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(15),
+                  ),
+                  border: Border.all(
+                    color: color.withValues(alpha: 0.2),
+                    width: 1,
+                  ),
+                ),
+                child: Center(
+                  child: Text(
+                    '#$rank',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.6),
+                      fontSize: 24,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAnimatedScoreTile({
     required int rank,
     required String name,
     required int score,
-    required String date,
+    required double delay,
   }) {
-    final Color rankColor;
-    final IconData rankIcon;
-    if (rank == 1) {
-      rankColor = Colors.white;
-      rankIcon = Icons.emoji_events;
-    } else if (rank == 2) {
-      rankColor = Colors.white70;
-      rankIcon = Icons.emoji_events;
-    } else if (rank == 3) {
-      rankColor = Colors.white54;
-      rankIcon = Icons.emoji_events;
-    } else {
-      rankColor = Colors.white38;
-      rankIcon = Icons.star_border;
-    }
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            rank <= 3
-                ? rankColor.withValues(alpha: 0.15)
-                : Colors.black.withValues(alpha: 0.3),
-            Colors.black.withValues(alpha: 0.2),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color:
-              rank <= 3 ? rankColor.withValues(alpha: 0.4) : Colors.white12,
+    return FadeTransition(
+      opacity: CurvedAnimation(
+        parent: _animationController,
+        curve: Interval(
+          (delay * 0.5).clamp(0.0, 1.0),
+          ((delay * 0.5) + 0.3).clamp(0.0, 1.0),
+          curve: Curves.easeOut,
         ),
       ),
-      child: Row(
-        children: [
-          // Rank badge
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: rankColor.withValues(alpha: 0.2),
-              shape: BoxShape.circle,
-              border: Border.all(color: rankColor, width: 2),
-            ),
-            child: Center(
-              child: rank <= 3
-                  ? Icon(rankIcon, color: rankColor, size: 24)
-                  : Text('#$rank',
-                      style: TextStyle(
-                          color: rankColor,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 14)),
+      child: SlideTransition(
+        position: Tween<Offset>(
+          begin: const Offset(0.1, 0),
+          end: Offset.zero,
+        ).animate(CurvedAnimation(
+          parent: _animationController,
+          curve: Interval(
+            (delay * 0.5).clamp(0.0, 1.0),
+            ((delay * 0.5) + 0.3).clamp(0.0, 1.0),
+            curve: Curves.easeOut,
+          )),
+        ),
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.05),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.1),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    // Rank
+                    SizedBox(
+                      width: 35,
+                      child: Text(
+                        '#$rank',
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.3),
+                          fontSize: 16,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    // Avatar Placeholder
+                    Container(
+                      width: 45,
+                      height: 45,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white.withValues(alpha: 0.05),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.1),
+                        ),
+                      ),
+                      child: const Center(
+                        child: Icon(Icons.person_outline,
+                            color: Colors.white60, size: 24),
+                      ),
+                    ),
+                    const SizedBox(width: 15),
+                    // Name
+                    Expanded(
+                      child: Text(
+                        name,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    // Score
+                    Text(
+                      '$score',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
-          const SizedBox(width: 16),
-
-          // Player info
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(name,
-                    style: TextStyle(
-                        color: rank <= 3 ? rankColor : Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800)),
-                Text('$score pts • $date',
-                    style: const TextStyle(
-                        color: Colors.white54, fontSize: 12)),
-              ],
-            ),
-          ),
-
-          // Score on right
-          Text('$score',
-              style: TextStyle(
-                  color: rank <= 3 ? rankColor : Colors.white70,
-                  fontSize: 24,
-                  fontWeight: FontWeight.w900)),
-        ],
+        ),
       ),
     );
   }

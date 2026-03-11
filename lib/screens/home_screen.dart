@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -133,35 +134,12 @@ class _HomeScreenState extends State<HomeScreen>
                       SizedBox(height: constraints.maxHeight * 0.12),
 
                       // Main title
-                      const Text(
-                        'CAD 4.0',
-                        style: TextStyle(
-                          fontSize: 52,
-                          fontWeight: FontWeight.w900,
-                          color: Colors.white,
-                          letterSpacing: 8,
-                          shadows: [
-                            Shadow(
-                                color: Colors.black87,
-                                offset: Offset(2, 2),
-                                blurRadius: 20),
-                            Shadow(
-                                color: Colors.white24,
-                                offset: Offset(0, 0),
-                                blurRadius: 40),
-                          ],
-                        ),
+                      SvgPicture.asset(
+                        'assets/hero.svg',
+                        width: constraints.maxWidth * 1.2,
+                        fit: BoxFit.contain,
                       ),
-                      const SizedBox(height: 6),
-                      Text(
-                        'CTRL + ALT + DELETE',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.white.withValues(alpha: 0.5),
-                          letterSpacing: 6,
-                          fontWeight: FontWeight.w300,
-                        ),
-                      ),
+                     
                       const SizedBox(height: 16),
                       Container(
                         padding: const EdgeInsets.symmetric(
@@ -172,12 +150,12 @@ class _HomeScreenState extends State<HomeScreen>
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(
-                          'GUESS THE CARTOON',
+                          'Guess the maximum number of cartoons under 1 minute and get a chance get rewarded on  the day of event',
                           style: TextStyle(
                             fontSize: 13,
                             color: Colors.white.withValues(alpha: 0.7),
                             fontWeight: FontWeight.w600,
-                            letterSpacing: 3,
+                            letterSpacing: 2,
                           ),
                         ),
                       ),
