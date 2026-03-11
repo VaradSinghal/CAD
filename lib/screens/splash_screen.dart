@@ -89,7 +89,7 @@ class _SplashScreenState extends State<SplashScreen>
                 },
               ),
             ),
-
+ 
             // Shooting stars image overlay with animation
             ..._buildAnimatedStarImages(context),
 

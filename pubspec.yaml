@@ -48,6 +48,7 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.13.1
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -62,6 +63,7 @@ flutter:
 
   assets:
     - assets/hero.svg
+    - assets/logo.png
     - assets/landing.png
     - assets/landing_without_Shootingstars.png
     - assets/bg.png
@@ -87,5 +89,12 @@ flutter:
   #       - asset: fonts/TrajanPro_Bold.ttf
   #         weight: 700
   #
-  # For details regarding fonts from package dependencies,
+  # for details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+ 
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path: "assets/logo.png"
+  min_sdk_android: 21
+
