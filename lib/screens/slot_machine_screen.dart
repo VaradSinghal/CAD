@@ -4,17 +4,37 @@ import 'package:flutter/material.dart';
 import 'leaderboard_screen.dart';
 
 const List<Map<String, String>> allHeads = [
+  {'asset': 'assets/heads/Amara.png', 'name': 'Amara'},
+  {'asset': 'assets/heads/Fynn.png', 'name': 'Fynn'},
   {'asset': 'assets/heads/buggsbunny.png', 'name': 'Bugs Bunny'},
+  {'asset': 'assets/heads/courage.png', 'name': 'Courage'},
+  {'asset': 'assets/heads/dora.png', 'name': 'Dora'},
   {'asset': 'assets/heads/doreamon.png', 'name': 'Doraemon'},
+  {'asset': 'assets/heads/haddi.png', 'name': 'Haddi'},
+  {'asset': 'assets/heads/jake.png', 'name': 'Jake'},
+  {'asset': 'assets/heads/kiteretsu.png', 'name': 'Kiteretsu'},
+  {'asset': 'assets/heads/pherb.png', 'name': 'Pherb'},
 ];
 
 const List<Map<String, String>> allTorsos = [
+  {'asset': 'assets/torso/Amara.png', 'name': 'Amara'},
+  {'asset': 'assets/torso/BeastBoy.png', 'name': 'Beast Boy'},
+  {'asset': 'assets/torso/Fynn.png', 'name': 'Fynn'},
+  {'asset': 'assets/torso/Jake.png', 'name': 'Jake'},
+  {'asset': 'assets/torso/Kick Buttowski.png', 'name': 'Kick Buttowski'},
   {'asset': 'assets/torso/Popeye.png', 'name': 'Popeye'},
   {'asset': 'assets/torso/mrBean.png', 'name': 'Mr Bean'},
+  {'asset': 'assets/torso/perry.png', 'name': 'Perry'},
 ];
 
 const List<Map<String, String>> allLegs = [
+  {'asset': 'assets/legs/Amara.png', 'name': 'Amara'},
+  {'asset': 'assets/legs/Fynn.png', 'name': 'Fynn'},
   {'asset': 'assets/legs/Kalia.png', 'name': 'Kalia'},
+  {'asset': 'assets/legs/Kick Buttowski.png', 'name': 'Kick Buttowski'},
+  {'asset': 'assets/legs/chota bheem.png', 'name': 'Chota Bheem'},
+  {'asset': 'assets/legs/jake.png', 'name': 'Jake'},
+  {'asset': 'assets/legs/johny bravo.png', 'name': 'Johny Bravo'},
   {'asset': 'assets/legs/mickeymouse.png', 'name': 'Mickey Mouse'},
 ];
 
