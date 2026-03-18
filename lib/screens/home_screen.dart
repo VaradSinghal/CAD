@@ -141,21 +141,25 @@ class _HomeScreenState extends State<HomeScreen>
                       ),
                      
                       const SizedBox(height: 16),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 18, vertical: 7),
-                        decoration: BoxDecoration(
-                          border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.15)),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          'Guess the maximum number of cartoons under 1 minute and get a chance get rewarded on  the day of event',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Colors.white.withValues(alpha: 0.7),
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: 2,
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 30),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 18, vertical: 10),
+                          decoration: BoxDecoration(
+                            border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.15)),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            'Guess the maximum number of cartoons under 1 minute and get a chance get rewarded on  the day of event',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.white.withValues(alpha: 0.7),
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 2,
+                            ),
                           ),
                         ),
                       ),

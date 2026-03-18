@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'leaderboard_screen.dart';
 
 const List<Map<String, String>> allHeads = [
+  {'asset': 'assets/heads/Sho Yamato.png', 'name': 'Sho Yamato'},
   {'asset': 'assets/heads/Amara.png', 'name': 'Amara'},
   {'asset': 'assets/heads/Fynn.png', 'name': 'Fynn'},
   {'asset': 'assets/heads/buggsbunny.png', 'name': 'Bugs Bunny'},
@@ -17,6 +18,7 @@ const List<Map<String, String>> allHeads = [
 ];
 
 const List<Map<String, String>> allTorsos = [
+  {'asset': 'assets/torso/Sho Yamato.png', 'name': 'Sho Yamato'},
   {'asset': 'assets/torso/Amara.png', 'name': 'Amara'},
   {'asset': 'assets/torso/BeastBoy.png', 'name': 'Beast Boy'},
   {'asset': 'assets/torso/Fynn.png', 'name': 'Fynn'},
@@ -28,6 +30,7 @@ const List<Map<String, String>> allTorsos = [
 ];
 
 const List<Map<String, String>> allLegs = [
+  {'asset': 'assets/legs/Sho Yamato.png', 'name': 'Sho Yamato'},
   {'asset': 'assets/legs/Amara.png', 'name': 'Amara'},
   {'asset': 'assets/legs/Fynn.png', 'name': 'Fynn'},
   {'asset': 'assets/legs/Kalia.png', 'name': 'Kalia'},
