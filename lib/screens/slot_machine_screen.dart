@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'leaderboard_screen.dart';
 
 const List<Map<String, String>> allHeads = [
@@ -244,16 +246,172 @@ class _SlotMachineScreenState extends State<SlotMachineScreen>
     });
   }
 
-  void _endGame() {
+  Future<void> _endGame() async {
+    final isTop10 = await _checkIfTop10Daily(_score);
+
+    if (isTop10) {
+      _showTop10EntryDialog();
+    } else {
+      _showSimpleEndDialog();
+    }
+  }
+
+  Future<bool> _checkIfTop10Daily(int score) async {
+    try {
+      final now = DateTime.now();
+      final startOfDay = DateTime(now.year, now.month, now.day);
+      final snapshot = await FirebaseFirestore.instance
+          .collection('leaderboard')
+          .where('timestamp', isGreaterThanOrEqualTo: startOfDay)
+          .get();
+
+      var allDocs = snapshot.docs.map((d) => d.data() as Map<String, dynamic>).toList();
+      allDocs.sort((a, b) => (b['score'] as int? ?? 0).compareTo(a['score'] as int? ?? 0));
+      
+      final top10 = allDocs.take(10).toList();
+
+      if (top10.length < 10) return true;
+      final lowestTopScore = top10.last['score'] as int? ?? 0;
+      return score >= lowestTopScore;
+    } catch (e) {
+      debugPrint('Top 10 check failed: $e');
+      return true; // Fallback to allowing entry if verification fails
+    }
+  }
+
+  void _showTop10EntryDialog() {
+    final phoneCtrl = TextEditingController();
+    final regCtrl = TextEditingController();
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF111111),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(color: Colors.white.withValues(alpha: 0.15)),
+        ),
+        title: Column(
+          children: [
+            const Text(' TOP 10 DAILY! ',
+                style: TextStyle(
+                    color: Colors.orangeAccent,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 2)),
+            const SizedBox(height: 8),
+            Text('You scored $_score pts',
+                style: const TextStyle(color: Colors.white, fontSize: 16)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Enter your details to claim your spot on the leaderboard!',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.white70, fontSize: 13),
+            ),
+            const SizedBox(height: 24),
+            
+            // Mobile Number Label & Field
+            _buildFieldLabel('Phone Number'),
+            _buildDialogField(phoneCtrl, '9876543210', Icons.phone_android,
+                TextInputType.phone, maxLength: 10, isPhone: true),
+            
+            const SizedBox(height: 16),
+            
+            // Registration Number Label & Field
+            _buildFieldLabel('Registration Number'),
+            _buildDialogField(regCtrl, 'RA2...',
+                Icons.badge_outlined, TextInputType.text),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              if (phoneCtrl.text.length != 10 || regCtrl.text.trim().isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Please enter a valid 10-digit mobile number and Registration Number.'),
+                    backgroundColor: Colors.redAccent,
+                  ),
+                );
+                return;
+              }
+              final newScore = {
+                'name': _playerName,
+                'score': _score,
+                'date': DateTime.now().toString().substring(0, 16),
+                'mobile': phoneCtrl.text,
+                'regNo': regCtrl.text,
+              };
+              saveScores(newScore);
+              Navigator.pop(ctx);
+              // Transfer to home screen
+              if (mounted) Navigator.pop(context);
+            },
+            child: const Text('Submit & Finish',
+                style: TextStyle(color: Colors.greenAccent, fontSize: 15, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFieldLabel(String label) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 4, bottom: 8),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: Text(
+          label,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 1,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDialogField(TextEditingController ctrl, String hint,
+      IconData icon, TextInputType type, {int? maxLength, bool isPhone = false}) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+      ),
+      child: TextField(
+        controller: ctrl,
+        keyboardType: type,
+        maxLength: maxLength,
+        inputFormatters: isPhone ? [FilteringTextInputFormatter.digitsOnly] : null,
+        style: const TextStyle(color: Colors.white),
+        decoration: InputDecoration(
+          counterText: '', // Hide the length counter below the field
+          hintText: hint,
+          hintStyle: const TextStyle(color: Colors.white30, fontSize: 14),
+          prefixIcon: Icon(icon, color: Colors.white30, size: 20),
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(vertical: 15),
+        ),
+      ),
+    );
+  }
+
+  void _showSimpleEndDialog() {
     final newScore = {
       'name': _playerName,
       'score': _score,
       'date': DateTime.now().toString().substring(0, 16),
     };
-    globalScores.add(newScore);
-    globalScores
-        .sort((a, b) => (b['score'] as int).compareTo(a['score'] as int));
     saveScores(newScore);
+
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -282,14 +440,7 @@ class _SlotMachineScreenState extends State<SlotMachineScreen>
           TextButton(
             onPressed: () {
               Navigator.pop(ctx);
-              setState(() {
-                _score = 0;
-                _feedback = '';
-                _showResults = false;
-                _timeLeft = 60;
-                _isGameOver = false;
-                _timerStarted = false;
-              });
+              _resetGame();
             },
             child: const Text('Play Again',
                 style: TextStyle(color: Colors.white70, fontSize: 15)),
@@ -306,6 +457,17 @@ class _SlotMachineScreenState extends State<SlotMachineScreen>
         ],
       ),
     );
+  }
+
+  void _resetGame() {
+    setState(() {
+      _score = 0;
+      _feedback = '';
+      _showResults = false;
+      _timeLeft = 60;
+      _isGameOver = false;
+      _timerStarted = false;
+    });
   }
 
   String _formatTime(int seconds) {

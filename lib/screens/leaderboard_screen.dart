@@ -6,17 +6,33 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 final List<Map<String, dynamic>> globalScores = [];
 
 /// Load scores from global Firestore
-Future<void> loadScores() async {
+Future<void> loadScores({bool isDaily = false}) async {
   try {
-    final snapshot = await FirebaseFirestore.instance
-        .collection('leaderboard')
-        .orderBy('score', descending: true)
-        .limit(20)
-        .get();
+    Query query = FirebaseFirestore.instance.collection('leaderboard');
 
-    globalScores.clear();
-    for (var doc in snapshot.docs) {
-      globalScores.add(doc.data());
+    if (isDaily) {
+      final now = DateTime.now();
+      final startOfDay = DateTime(now.year, now.month, now.day);
+      query = query.where('timestamp', isGreaterThanOrEqualTo: startOfDay);
+      
+      final snapshot = await query.get();
+      
+      var allDocs = snapshot.docs.map((d) => d.data() as Map<String, dynamic>).toList();
+      allDocs.sort((a, b) => (b['score'] as int? ?? 0).compareTo(a['score'] as int? ?? 0));
+      
+      globalScores.clear();
+      globalScores.addAll(allDocs.take(20));
+      
+    } else {
+      final snapshot = await query
+          .orderBy('score', descending: true)
+          .limit(20)
+          .get();
+
+      globalScores.clear();
+      for (var doc in snapshot.docs) {
+        globalScores.add(doc.data() as Map<String, dynamic>);
+      }
     }
   } catch (e) {
     debugPrint('Failed to load Firestore scores: $e');
@@ -30,6 +46,8 @@ Future<void> saveScores(Map<String, dynamic> scoreData) async {
       'name': scoreData['name'],
       'score': scoreData['score'],
       'date': scoreData['date'],
+      'mobile': scoreData['mobile'], // Added
+      'regNo': scoreData['regNo'],   // Added
       'timestamp': FieldValue.serverTimestamp(),
     });
   } catch (e) {
@@ -47,6 +65,7 @@ class LeaderboardScreen extends StatefulWidget {
 class _LeaderboardScreenState extends State<LeaderboardScreen>
     with SingleTickerProviderStateMixin {
   bool _loading = true;
+  bool _isDaily = true; // Default to Daily
   late AnimationController _animationController;
 
   @override
@@ -60,9 +79,11 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
   }
 
   Future<void> _load() async {
-    await loadScores();
+    setState(() => _loading = true);
+    await loadScores(isDaily: _isDaily);
     if (mounted) {
       setState(() => _loading = false);
+      _animationController.reset();
       _animationController.forward();
     }
   }
@@ -94,6 +115,9 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
             children: [
               // Premium App Bar
               _buildAppBar(context),
+
+              // Daily/Global Toggle
+              _buildToggle(),
 
               Expanded(
                 child: _loading
@@ -153,6 +177,76 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
             ),
           ),
           const SizedBox(width: 44),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildToggle() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(15),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: GestureDetector(
+              onTap: () {
+                if (!_isDaily) {
+                  setState(() => _isDaily = true);
+                  _load();
+                }
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                decoration: BoxDecoration(
+                  color: _isDaily ? Colors.white : Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  'DAILY',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: _isDaily ? Colors.black : Colors.white60,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 12,
+                    letterSpacing: 2,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            child: GestureDetector(
+              onTap: () {
+                if (_isDaily) {
+                  setState(() => _isDaily = false);
+                  _load();
+                }
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                decoration: BoxDecoration(
+                  color: !_isDaily ? Colors.white : Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  'GLOBAL',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: !_isDaily ? Colors.black : Colors.white60,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 12,
+                    letterSpacing: 2,
+                  ),
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -226,7 +320,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
           Padding(
             padding: const EdgeInsets.only(left: 10, bottom: 15),
             child: Text(
-              'WORLD RANKINGS',
+              _isDaily ? 'TODAY\'S BEST' : 'WORLD RANKINGS',
               style: TextStyle(
                 color: Colors.white.withValues(alpha: 0.4),
                 fontSize: 12,
