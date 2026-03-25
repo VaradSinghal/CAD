@@ -9,10 +9,16 @@ const List<Map<String, String>> allHeads = [
   {'asset': 'assets/heads/Sho Yamato.png', 'name': 'Sho Yamato'},
   {'asset': 'assets/heads/Amara.png', 'name': 'Amara'},
   {'asset': 'assets/heads/Fynn.png', 'name': 'Fynn'},
+  {'asset': 'assets/heads/Indumati.png', 'name': 'Indumati'},
+  {'asset': 'assets/heads/Keymon.png', 'name': 'Keymon'},
+  {'asset': 'assets/heads/Mighty Raju.png', 'name': 'Mighty Raju'},
+  {'asset': 'assets/heads/Pinky.png', 'name': 'Pinky'},
+  {'asset': 'assets/heads/Shaggy.png', 'name': 'Shaggy'},
   {'asset': 'assets/heads/buggsbunny.png', 'name': 'Bugs Bunny'},
   {'asset': 'assets/heads/courage.png', 'name': 'Courage'},
   {'asset': 'assets/heads/dora.png', 'name': 'Dora'},
   {'asset': 'assets/heads/doreamon.png', 'name': 'Doraemon'},
+  {'asset': 'assets/heads/gumball.png', 'name': 'Gumball'},
   {'asset': 'assets/heads/haddi.png', 'name': 'Haddi'},
   {'asset': 'assets/heads/jake.png', 'name': 'Jake'},
   {'asset': 'assets/heads/kiteretsu.png', 'name': 'Kiteretsu'},
@@ -25,8 +31,11 @@ const List<Map<String, String>> allTorsos = [
   {'asset': 'assets/torso/BeastBoy.png', 'name': 'Beast Boy'},
   {'asset': 'assets/torso/Fynn.png', 'name': 'Fynn'},
   {'asset': 'assets/torso/Jake.png', 'name': 'Jake'},
+  {'asset': 'assets/torso/Keechak.png', 'name': 'Keechak'},
   {'asset': 'assets/torso/Kick Buttowski.png', 'name': 'Kick Buttowski'},
   {'asset': 'assets/torso/Popeye.png', 'name': 'Popeye'},
+  {'asset': 'assets/torso/Shaggy.png', 'name': 'Shaggy'},
+  {'asset': 'assets/torso/gumball.png', 'name': 'Gumball'},
   {'asset': 'assets/torso/mrBean.png', 'name': 'Mr Bean'},
   {'asset': 'assets/torso/perry.png', 'name': 'Perry'},
 ];
@@ -36,8 +45,13 @@ const List<Map<String, String>> allLegs = [
   {'asset': 'assets/legs/Amara.png', 'name': 'Amara'},
   {'asset': 'assets/legs/Fynn.png', 'name': 'Fynn'},
   {'asset': 'assets/legs/Kalia.png', 'name': 'Kalia'},
+  {'asset': 'assets/legs/Keymon.png', 'name': 'Keymon'},
   {'asset': 'assets/legs/Kick Buttowski.png', 'name': 'Kick Buttowski'},
+  {'asset': 'assets/legs/Mighty Raju.png', 'name': 'Mighty Raju'},
+  {'asset': 'assets/legs/Pinky.png', 'name': 'Pinky'},
+  {'asset': 'assets/legs/Shaggy.png', 'name': 'Shaggy'},
   {'asset': 'assets/legs/chota bheem.png', 'name': 'Chota Bheem'},
+  {'asset': 'assets/legs/gumball.png', 'name': 'Gumball'},
   {'asset': 'assets/legs/jake.png', 'name': 'Jake'},
   {'asset': 'assets/legs/johny bravo.png', 'name': 'Johny Bravo'},
   {'asset': 'assets/legs/mickeymouse.png', 'name': 'Mickey Mouse'},
@@ -294,7 +308,7 @@ class _SlotMachineScreenState extends State<SlotMachineScreen>
         ),
         title: Column(
           children: [
-            const Text(' TOP 10 DAILY! ',
+            const Text('TOP 10 DAILY!',
                 style: TextStyle(
                     color: Colors.orangeAccent,
                     fontSize: 22,
@@ -305,28 +319,30 @@ class _SlotMachineScreenState extends State<SlotMachineScreen>
                 style: const TextStyle(color: Colors.white, fontSize: 16)),
           ],
         ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              'Enter your details to claim your spot on the leaderboard!',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.white70, fontSize: 13),
-            ),
-            const SizedBox(height: 24),
-            
-            // Mobile Number Label & Field
-            _buildFieldLabel('Phone Number'),
-            _buildDialogField(phoneCtrl, '9876543210', Icons.phone_android,
-                TextInputType.phone, maxLength: 10, isPhone: true),
-            
-            const SizedBox(height: 16),
-            
-            // Registration Number Label & Field
-            _buildFieldLabel('Registration Number'),
-            _buildDialogField(regCtrl, 'RA2...',
-                Icons.badge_outlined, TextInputType.text),
-          ],
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Enter your details to claim your spot on the leaderboard!',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.white70, fontSize: 13),
+              ),
+              const SizedBox(height: 24),
+              
+              // Mobile Number Label & Field
+              _buildFieldLabel('Phone Number'),
+              _buildDialogField(phoneCtrl, '9876543210', Icons.phone_android,
+                  TextInputType.phone, maxLength: 10, isPhone: true),
+              
+              const SizedBox(height: 16),
+              
+              // Registration Number Label & Field
+              _buildFieldLabel('Registration Number'),
+              _buildDialogField(regCtrl, 'RA2...',
+                  Icons.badge_outlined, TextInputType.text),
+            ],
+          ),
         ),
         actions: [
           TextButton(
